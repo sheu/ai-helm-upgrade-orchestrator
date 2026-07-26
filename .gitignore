@@ -84,7 +84,6 @@ create_integrated_notebook.py
 # ── Paper intermediate formats (keep only the PDF) ───────────────────────────
 paper/*.html
 paper/*.md
-paper/*.md
 
 # ── Helm dependency cache ─────────────────────────────────────────────────────
 charts/*/charts/
