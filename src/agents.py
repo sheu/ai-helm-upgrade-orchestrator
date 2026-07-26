@@ -514,6 +514,22 @@ Rules:
             if obs.succeeded
         }
         missing = [t.value for t in REQUIRED_TOOLS if t not in successful_tools]
+
+        # Note tools that ran successfully but returned no usable evidence.
+        # These satisfy the mandatory-tool gate (the query was attempted) but
+        # a production implementation would require non-empty results before
+        # marking evidence as sufficient.
+        empty_evidence_notes: List[str] = []
+        for obs in observations:
+            if not obs.succeeded:
+                continue
+            if isinstance(obs.result, ReleaseNotesResult) and not obs.result.findings:
+                empty_evidence_notes.append(f"{obs.tool}:queried_but_no_findings")
+            elif isinstance(obs.result, RunbookResult) and not obs.result.findings:
+                empty_evidence_notes.append(f"{obs.tool}:queried_but_no_findings")
+            elif isinstance(obs.result, CompatibilityResult) and not obs.result.minimum_kubernetes_version:
+                empty_evidence_notes.append(f"{obs.tool}:queried_but_no_version_found")
+
         status = ResearchStatus.INCOMPLETE if (incomplete or missing) else ResearchStatus.COMPLETE
 
         # LLM synthesis — skip when incomplete (evidence is insufficient)
@@ -551,7 +567,7 @@ Rules:
             sources_consulted=list(dict.fromkeys(sources)),
             synthesis_note=synthesis_note or "",
             status=status,
-            missing_evidence=missing,
+            missing_evidence=missing + empty_evidence_notes,
         )
 
     def _llm_synthesis(

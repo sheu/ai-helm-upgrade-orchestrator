@@ -178,7 +178,7 @@ class UpgradeCoordinator:
                     f"Missing evidence: {research_report.missing_evidence}. "
                     "Human investigation is required before proceeding."
                 ),
-                UpgradeState.PAUSED, RiskLevel.LOW, requires_human=True
+                UpgradeState.PAUSED, RiskLevel.UNKNOWN, requires_human=True
             )
 
         # ── Phase 3: Risk Scoring & Planning ─────────────────────────────────

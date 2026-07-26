@@ -29,6 +29,7 @@ class Criticality(str, Enum):
     CRITICAL = "critical"
 
 class RiskLevel(str, Enum):
+    UNKNOWN = "unknown"   # Research incomplete — risk cannot be assessed
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
