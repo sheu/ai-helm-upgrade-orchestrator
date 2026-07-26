@@ -71,17 +71,17 @@ def generate_proposed_change(
     proposed_values["chart"] = {
         "repository": proposed_values.get("chart", {}).get("repository", "internal-platform"),
         "name": cluster.component,
-        "version": plan.target_version,
+        "version": plan.target_chart_version,   # Helm chart version
     }
     proposed_values["image"] = {
         "repository": proposed_values.get("image", {}).get("repository",
             f"confluentinc/cp-{cluster.component}"),
-        "tag": plan.target_version,
+        "tag": plan.target_app_version,          # Application/image version
         "pullPolicy": "IfNotPresent",
     }
 
     # Apply known migrations
-    proposed_values = _apply_value_migrations(proposed_values, plan.target_version)
+    proposed_values = _apply_value_migrations(proposed_values, plan.target_chart_version)
     migration_notes = proposed_values.pop("_migration_notes", [])
 
     proposed_content = yaml.dump(proposed_values, default_flow_style=False)
@@ -102,7 +102,9 @@ def generate_proposed_change(
     ]
 
     pr_description = (
-        f"## Helm Upgrade: {cluster.component} {cluster.chart_version} → {plan.target_version}\n\n"
+        f"## Helm Upgrade: {cluster.component} "
+        f"{cluster.chart_version} → {plan.target_chart_version} "
+        f"(app {cluster.app_version} → {plan.target_app_version})\n\n"
         f"**Cluster:** {cluster.cluster_name}\n"
         f"**Environment:** {cluster.environment.value}\n"
         f"**Risk Level:** {plan.risk_level.value.upper()}\n\n"
@@ -111,7 +113,7 @@ def generate_proposed_change(
         + f"\n\n### Validation Evidence\n"
         + "\n".join(f"- {e}" for e in plan.evidence or ["See upgrade plan"])
         + f"\n\n### Rollback\n"
-        f"Rollback to chart version `{cluster.chart_version}` via ArgoCD.\n\n"
+        f"Rollback to chart version `{cluster.chart_version}` (app `{cluster.app_version}`) via ArgoCD.\n\n"
         f"**Requires human approval before PROD deployment.**\n"
     )
 
@@ -120,9 +122,9 @@ def generate_proposed_change(
         environment=cluster.environment,
         values_path=str(cluster.values_path),
         current_chart_version=cluster.chart_version,
-        target_chart_version=plan.target_version,
+        target_chart_version=plan.target_chart_version,
         current_app_version=cluster.app_version,
-        target_app_version=research.target_version,
+        target_app_version=plan.target_app_version,
         value_migrations=value_changes,
         diff_content=diff_content,
         rollback_version=cluster.chart_version,

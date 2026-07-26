@@ -142,12 +142,12 @@ def calculate_risk_score(
 
     # Major version change
     for cluster in inventory_report.affected_clusters:
-        if is_major_version_change(cluster.app_version, research_report.target_version):
+        if is_major_version_change(cluster.app_version, research_report.target_app_version):
             score += weights.get("major_app_version_change", 25)
             factors["major_app_version_change"] = {
                 "triggered": True,
                 "weight": weights.get("major_app_version_change", 25),
-                "evidence": f"App version change to {research_report.target_version}",
+                "evidence": f"App version change to {research_report.target_app_version}",
             }
             break
 
@@ -329,7 +329,8 @@ def build_upgrade_plan(
         request_id=request_id,
         component=inventory_report.component,
         current_versions=list(inventory_report.version_distribution.keys()),
-        target_version=research_report.target_version,
+        target_chart_version=research_report.target_chart_version,
+        target_app_version=research_report.target_app_version,
         affected_clusters=[c.cluster_name for c in inventory_report.affected_clusters],
         risk_score=score,
         risk_level=level,

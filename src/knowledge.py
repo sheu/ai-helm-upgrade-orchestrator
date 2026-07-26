@@ -201,7 +201,8 @@ def run_upgrade_research(
     return ResearchReport(
         request_id=request_id,
         component=component,
-        target_version=target_app_version,
+        target_chart_version=target_chart_version,
+        target_app_version=target_app_version,
         findings=all_findings,
         minimum_kubernetes_version=min_k8s,
         breaking_changes_detected=breaking,

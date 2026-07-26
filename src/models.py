@@ -42,6 +42,7 @@ class UpgradeState(str, Enum):
     BLOCKED = "Blocked"
     INT_DEPLOYED = "INTDeployed"
     AWAITING_APPROVAL = "AwaitingApproval"
+    PAUSED = "Paused"          # Missing evidence — human investigation required
     INT_FAILED = "INTFailed"
     PROD_PLANNED = "PRODPlanned"
     ROLLED_BACK = "RolledBack"
@@ -119,12 +120,14 @@ class ResearchReport(BaseModel):
     """Output of the Upgrade Research Agent."""
     request_id: str
     component: str
-    target_version: str
+    target_chart_version: str   # Helm chart version, e.g. "0.18.3"
+    target_app_version: str     # Application/image version, e.g. "7.8.2"
     findings: List[ResearchFinding]
     minimum_kubernetes_version: Optional[str] = None
     breaking_changes_detected: bool = False
     deprecated_values: List[str] = Field(default_factory=list)
     sources_consulted: List[str] = Field(default_factory=list)
+    synthesis_note: Optional[str] = None  # LLM-generated summary; influences risk context
 
 
 # ── Risk & Planning ───────────────────────────────────────────────────────────
@@ -141,7 +144,8 @@ class UpgradePlan(BaseModel):
     request_id: str
     component: str
     current_versions: List[str]
-    target_version: str
+    target_chart_version: str   # Helm chart version, e.g. "0.18.3"
+    target_app_version: str     # Application/image version, e.g. "7.8.2"
     affected_clusters: List[str]
     risk_score: int = Field(ge=0, le=100)
     risk_level: RiskLevel

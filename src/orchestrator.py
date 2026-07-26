@@ -283,15 +283,15 @@ class UpgradeCoordinator:
             )
 
         if health_result.overall == GateResult.UNKNOWN:
-            self._transition(UpgradeState.BLOCKED,
-                             "Missing monitoring evidence — UNKNOWN state")
+            self._transition(UpgradeState.PAUSED,
+                             "Missing monitoring evidence — UNKNOWN state, human investigation required")
             return self._build_report(
                 request, inventory_report, plan,
                 [f"{v.cluster}: {v.overall.value}" for v in validation_results],
                 [f"Health: UNKNOWN — {'; '.join(health_result.notes)}"], [],
                 "PAUSED: Monitoring evidence unavailable. "
-                "UNKNOWN is not PASS. Human investigation required.",
-                UpgradeState.AWAITING_APPROVAL, plan.risk_level, requires_human=True
+                "UNKNOWN is not PASS. Human investigation required before any promotion decision.",
+                UpgradeState.PAUSED, plan.risk_level, requires_human=True
             )
 
         # INT passed — transition to awaiting human approval for PROD
@@ -360,6 +360,7 @@ class UpgradeCoordinator:
         )
 
         research_summary = "No release notes found for this version." if plan is None else (
+            f"Chart {plan.target_chart_version} / app {plan.target_app_version}. "
             f"Risk score: {plan.risk_score}/100 ({plan.risk_level.value.upper()}). "
             f"Breaking changes: {plan.compatibility_findings[0].title if plan.compatibility_findings else 'none'}. "
             f"Min K8s: {plan.risk_factors.get('kubernetes_incompatibility', {}).get('evidence', 'not specified')}."
