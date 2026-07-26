@@ -162,13 +162,7 @@ class UpgradeCoordinator:
             runbooks_dir=self.runbooks_dir,
             llm_client=self.llm_client,
         )
-        research_report = research_agent.run(
-            component=request.component,
-            target_chart_version=request.target_chart_version,
-            target_app_version=request.target_app_version,
-            release_notes_dir=self.release_notes_dir,
-            runbooks_dir=self.runbooks_dir,
-        )
+        research_report = research_agent.run(request)
 
         # ── Phase 3: Risk Scoring & Planning ─────────────────────────────────
         print("\n[Phase 3] Planning Agent — calculating risk score and upgrade plan...")

@@ -230,15 +230,83 @@ class ProposedChange(BaseModel):
 
 class LLMSynthesis(BaseModel):
     """
-    Strict schema for the JSON object the LLM must return.
-    model_validate_json() is used instead of json.loads() so that every field
-    is type-checked: synthesis_note must be a str, additional_risks must be a
-    list of str, and no unexpected keys are silently accepted.
+    Strict schema for the JSON object the LLM must return for synthesis.
+    model_validate_json() enforces types and rejects unexpected keys.
     """
     model_config = ConfigDict(extra="forbid")
 
     synthesis_note: str
     additional_risks: List[str] = Field(default_factory=list)
+
+
+# ── ReAct agent models ────────────────────────────────────────────────────────
+
+class AgentAction(str, Enum):
+    """Enumeration of actions the ReAct agent may select."""
+    SEARCH_RELEASE_NOTES = "search_release_notes"
+    SEARCH_RUNBOOK = "search_runbook"
+    CHECK_COMPATIBILITY = "get_kubernetes_compatibility"
+    FINISH = "finish"
+
+
+class ReActDecision(BaseModel):
+    """
+    Schema for each LLM decision in the ReAct loop.
+    extra='forbid' ensures the model cannot smuggle arbitrary fields.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    decision_summary: str           # Auditable explanation — not raw chain-of-thought
+    action: AgentAction
+    action_input: Dict[str, str] = Field(default_factory=dict)
+
+
+# ── Tool input validation models ──────────────────────────────────────────────
+
+class ReleaseNotesInput(BaseModel):
+    component: str
+    chart_version: str
+
+
+class RunbookInput(BaseModel):
+    component: str
+
+
+class CompatibilityInput(BaseModel):
+    component: str
+    chart_version: str
+
+
+# ── Typed tool result models ──────────────────────────────────────────────────
+
+class ReleaseNotesResult(BaseModel):
+    findings: List["ResearchFinding"]
+    source: Optional[str] = None
+
+
+class RunbookResult(BaseModel):
+    findings: List["ResearchFinding"]
+    source: Optional[str] = None
+
+
+class CompatibilityResult(BaseModel):
+    minimum_kubernetes_version: Optional[str] = None
+    source: Optional[str] = None
+
+
+# ── ReAct observation ─────────────────────────────────────────────────────────
+
+class ToolObservation(BaseModel):
+    """
+    Structured record of one tool invocation inside the ReAct loop.
+    Written to the audit log and fed back to the LLM as context.
+    """
+    iteration: int
+    tool: str
+    input: Dict[str, str] = Field(default_factory=dict)
+    result: Optional[Any] = None    # ReleaseNotesResult | RunbookResult | CompatibilityResult
+    error: Optional[str] = None
+    succeeded: bool
 
 
 # ── Audit ─────────────────────────────────────────────────────────────────────
