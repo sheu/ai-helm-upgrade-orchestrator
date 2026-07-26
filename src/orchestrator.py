@@ -32,6 +32,7 @@ from .models import (
     Environment,
     GateResult,
     HealthSnapshot,
+    ResearchStatus,
     RiskLevel,
     UpgradePlan,
     UpgradeReport,
@@ -163,6 +164,22 @@ class UpgradeCoordinator:
             llm_client=self.llm_client,
         )
         research_report = research_agent.run(request)
+
+        # ── Research completeness gate ────────────────────────────────────────
+        if research_report.status == ResearchStatus.INCOMPLETE:
+            self._transition(
+                UpgradeState.PAUSED,
+                f"Upgrade research incomplete — missing: {research_report.missing_evidence}",
+            )
+            return self._build_report(
+                request, inventory_report, None, [], [], [],
+                (
+                    "PAUSED: Mandatory upgrade evidence was not collected by the research agent. "
+                    f"Missing evidence: {research_report.missing_evidence}. "
+                    "Human investigation is required before proceeding."
+                ),
+                UpgradeState.PAUSED, RiskLevel.LOW, requires_human=True
+            )
 
         # ── Phase 3: Risk Scoring & Planning ─────────────────────────────────
         print("\n[Phase 3] Planning Agent — calculating risk score and upgrade plan...")

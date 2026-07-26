@@ -10,7 +10,7 @@ validation patterns used in the agentic-ai-capstone research agent.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -60,6 +60,11 @@ class FindingSeverity(str, Enum):
     CRITICAL = "CRITICAL"
 
 
+class ResearchStatus(str, Enum):
+    COMPLETE = "complete"
+    INCOMPLETE = "incomplete"
+
+
 # ── Request ───────────────────────────────────────────────────────────────────
 
 class UpgradeRequest(BaseModel):
@@ -72,7 +77,7 @@ class UpgradeRequest(BaseModel):
     regions: List[str]
     starting_environment: Environment = Environment.INT
     requested_by: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ── Inventory ─────────────────────────────────────────────────────────────────
@@ -128,6 +133,8 @@ class ResearchReport(BaseModel):
     deprecated_values: List[str] = Field(default_factory=list)
     sources_consulted: List[str] = Field(default_factory=list)
     synthesis_note: Optional[str] = None  # LLM-generated summary; influences risk context
+    status: ResearchStatus = ResearchStatus.COMPLETE
+    missing_evidence: List[str] = Field(default_factory=list)
 
 
 # ── Risk & Planning ───────────────────────────────────────────────────────────
@@ -186,7 +193,7 @@ class ValidationResult(BaseModel):
 class HealthSnapshot(BaseModel):
     """Post-deployment health observation."""
     cluster: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     pod_ready_percent: Optional[float] = None
     restart_count: Optional[int] = None
     error_rate_change_pct: Optional[float] = None
@@ -263,16 +270,21 @@ class ReActDecision(BaseModel):
 
 # ── Tool input validation models ──────────────────────────────────────────────
 
-class ReleaseNotesInput(BaseModel):
+class StrictToolInput(BaseModel):
+    """Base class that forbids unexpected fields on all tool input models."""
+    model_config = ConfigDict(extra="forbid")
+
+
+class ReleaseNotesInput(StrictToolInput):
     component: str
     chart_version: str
 
 
-class RunbookInput(BaseModel):
+class RunbookInput(StrictToolInput):
     component: str
 
 
-class CompatibilityInput(BaseModel):
+class CompatibilityInput(StrictToolInput):
     component: str
     chart_version: str
 
@@ -313,7 +325,7 @@ class ToolObservation(BaseModel):
 
 class AuditEntry(BaseModel):
     request_id: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     agent: str
     action: str
     tool_used: Optional[str] = None
@@ -336,4 +348,4 @@ class UpgradeReport(BaseModel):
     proposed_changes: List[str]
     audit_trail_length: int
     requires_human_action: bool
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

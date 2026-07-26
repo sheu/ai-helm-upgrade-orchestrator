@@ -71,6 +71,7 @@ from .models import (
     ReleaseNotesResult,
     ResearchFinding,
     ResearchReport,
+    ResearchStatus,
     RunbookInput,
     RunbookResult,
     ToolObservation,
@@ -285,6 +286,79 @@ Rules:
 
     # ── Decision logic ────────────────────────────────────────────────────────
 
+    def _observation_for_prompt(self, obs: ToolObservation) -> dict:
+        """
+        Produce a bounded, structured observation dict for the LLM prompt.
+        Includes finding titles and severity so the LLM can reason about
+        content, not just counts. Does not include full raw document text.
+        """
+        base = {
+            "tool": obs.tool,
+            "input": obs.input,
+            "succeeded": obs.succeeded,
+        }
+        if not obs.succeeded:
+            base["error"] = obs.error
+            return base
+
+        r = obs.result
+        if isinstance(r, ReleaseNotesResult):
+            base["findings"] = [
+                {
+                    "title": f.title,
+                    "severity": f.severity.value,
+                    "requires_validation": f.requires_validation,
+                }
+                for f in r.findings[:10]   # bounded: no raw document text
+            ]
+            base["source"] = r.source
+        elif isinstance(r, RunbookResult):
+            base["findings"] = [
+                {
+                    "title": f.title,
+                    "severity": f.severity.value,
+                    "requires_validation": f.requires_validation,
+                }
+                for f in r.findings[:10]
+            ]
+            base["source"] = r.source
+        elif isinstance(r, CompatibilityResult):
+            base["minimum_kubernetes_version"] = r.minimum_kubernetes_version
+            base["source"] = r.source
+        return base
+
+    def _validate_action_scope(
+        self,
+        decision: ReActDecision,
+        request: UpgradeRequest,
+    ) -> None:
+        """
+        Reject tool calls whose component or version don't match the request.
+
+        Without this check an LLM could satisfy the mandatory evidence
+        requirement by calling tools on an unrelated component or version.
+        """
+        if decision.action == AgentAction.FINISH:
+            return
+
+        expected_component = decision.action_input.get("component")
+        if expected_component != request.component:
+            raise ValueError(
+                f"Scope violation: tool component '{expected_component}' "
+                f"does not match request component '{request.component}'"
+            )
+
+        if decision.action in {
+            AgentAction.SEARCH_RELEASE_NOTES,
+            AgentAction.CHECK_COMPATIBILITY,
+        }:
+            version = decision.action_input.get("chart_version")
+            if version != request.target_chart_version:
+                raise ValueError(
+                    f"Scope violation: tool chart_version '{version}' "
+                    f"does not match requested version '{request.target_chart_version}'"
+                )
+
     def _next_decision(
         self,
         request: UpgradeRequest,
@@ -306,13 +380,7 @@ Rules:
             },
             "available_tools": self.registry.list_names() + ["finish"],
             "observations": [
-                {
-                    "iteration": obs.iteration,
-                    "tool": obs.tool,
-                    "input": obs.input,
-                    "succeeded": obs.succeeded,
-                    "summary": self._summarise_result(obs) if obs.succeeded else obs.error,
-                }
+                self._observation_for_prompt(obs)
                 for obs in observations
             ],
         }, indent=2)
@@ -402,6 +470,9 @@ Rules:
         Release-note findings are identified by observation tool name, not by
         the individual finding's source string (which is just a filename and
         may not contain a path prefix).
+
+        When incomplete=True, status=INCOMPLETE is set and missing_evidence
+        lists the tools that were never successfully called.
         """
         all_findings: List[ResearchFinding] = []
         release_note_findings: List[ResearchFinding] = []
@@ -436,8 +507,17 @@ Rules:
             if re.search(r"rename|deprecat", f.title, re.IGNORECASE)
         ]
 
-        # LLM synthesis — runs after all tool observations are collected
-        if synthesis_note is None:
+        # Compute status and missing evidence
+        successful_tools = {
+            AgentAction(obs.tool)
+            for obs in observations
+            if obs.succeeded
+        }
+        missing = [t.value for t in REQUIRED_TOOLS if t not in successful_tools]
+        status = ResearchStatus.INCOMPLETE if (incomplete or missing) else ResearchStatus.COMPLETE
+
+        # LLM synthesis — skip when incomplete (evidence is insufficient)
+        if not incomplete and synthesis_note is None:
             findings_text = "\n".join(
                 f"[{f.severity.value}] {f.title}: {f.evidence_excerpt[:120]}"
                 for f in all_findings
@@ -449,7 +529,6 @@ Rules:
                 request.target_app_version,
             )
             synthesis_note = llm.synthesis_note
-            # LLM hypotheses are INFO findings — they do not trigger gates
             for risk in llm.additional_risks:
                 if risk.strip():
                     all_findings.append(ResearchFinding(
@@ -460,13 +539,6 @@ Rules:
                         requires_validation=True,
                     ))
 
-        if incomplete and synthesis_note == (
-            "Research stopped after the maximum number of iterations. "
-            "Human review is required."
-        ):
-            # No LLM synthesis — too risky to extrapolate without complete evidence
-            pass
-
         return ResearchReport(
             request_id=request.request_id,
             component=request.component,
@@ -476,8 +548,10 @@ Rules:
             minimum_kubernetes_version=min_k8s,
             breaking_changes_detected=breaking,
             deprecated_values=deprecated_values,
-            sources_consulted=list(dict.fromkeys(sources)),  # deduplicated
+            sources_consulted=list(dict.fromkeys(sources)),
             synthesis_note=synthesis_note or "",
+            status=status,
+            missing_evidence=missing,
         )
 
     def _llm_synthesis(
@@ -605,6 +679,7 @@ Rules:
             completed_calls.add(call_key)
 
             try:
+                self._validate_action_scope(decision, request)
                 result = self.registry.call(
                     decision.action.value,
                     decision.action_input,
