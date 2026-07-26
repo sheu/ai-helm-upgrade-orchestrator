@@ -17,8 +17,8 @@ This project demonstrates an AI-assisted system that automates the analysis, ris
 | Project 2 — Statistical Data Analysis | Data & Statistics | Pandas EDA methods for inventory quality analysis |
 | Project 3 — Applied ML (LSTM) | Machine Learning | Feature-weight risk scoring framework |
 | Project 5 — Generative AI (VAE) | Generative AI | LLM synthesis of release notes into structured findings |
-| Project 6a — Agentic AI Capstone | Agentic AI | Tool-registry discipline and audit-logging pattern for UpgradeResearchAgent |
-| Project 6b — Agentic AI Beaver Choice | Agentic AI | Multi-agent sequential orchestration pattern |
+| Project 6a — Agentic AI Capstone | Agentic AI | Bounded ReAct loop with tool-registry enforcement and audit logging for UpgradeResearchAgent |
+| Project 6b — Agentic AI Beaver Choice | Agentic AI | Sequential coordinator pattern with deterministic analytical components |
 
 ## Repository Structure
 
@@ -35,8 +35,8 @@ ai-helm-upgrade-orchestrator/
 │   ├── helm_tools.py     # Helm lint/template wrappers
 │   ├── monitoring.py     # Health gate evaluation
 │   ├── gitops.py         # GitOps change generation
-│   ├── agents.py         # Research agent with LLM synthesis (P5, P6a)
-│   ├── orchestrator.py   # Multi-agent coordinator (P6b)
+│   ├── agents.py         # Bounded ReAct research agent + tool registry (P5, P6a)
+│   ├── orchestrator.py   # Deterministic coordinator with LLM-assisted research phase (P6b)
 │   └── reporting.py      # Audit logging
 ├── config/
 │   ├── quality_gates.yaml
@@ -96,13 +96,13 @@ jupyter nbconvert --to notebook --execute --inplace \
 
 ## Upgrade Scenarios Demonstrated
 
-| # | Scenario | Expected Outcome |
-|---|---|---|
-| 1 | Patch upgrade (0.18.2 → 0.18.3) | Low risk, promote recommended |
-| 2 | Major upgrade with breaking value change | High risk, review required |
-| 3 | Kubernetes version incompatibility | BLOCKED before deployment |
-| 4 | Failed INT deployment (high restarts/errors) | Rollback recommended |
-| 5 | Missing observability evidence | UNKNOWN state, human investigation |
+| # | Scenario | Risk Score | Expected Outcome |
+|---|---|---|---|
+| 1 | Patch upgrade (0.18.2 → 0.18.3) | 20/100 Low | AwaitingApproval — promote recommended |
+| 2 | Major upgrade with breaking value change | 45/100 Medium | AwaitingApproval — additional review required |
+| 3 | Kubernetes version incompatibility | 70/100 High | Blocked before any deployment |
+| 4 | Failed INT deployment (high restarts/errors) | 45/100 Medium | INTFailed — rollback recommended |
+| 5 | Missing observability evidence | 20/100 Low | Paused — UNKNOWN health, human investigation required |
 
 ## System Architecture
 
@@ -114,7 +114,12 @@ Upgrade Request
       │                    (Pandas EDA — P2)
       ▼
 [Research Agent]────────→ ResearchReport
-      │                    (tool-constrained retrieval + LLM synthesis — P5, P6a)
+      │   Bounded ReAct loop (≤5 iterations):
+      │   Decision → registry.call() → ToolObservation
+      │   Tools: search_release_notes | search_runbook | get_kubernetes_compatibility
+      │   Mandatory evidence required before FINISH accepted
+      │   INCOMPLETE → coordinator transitions to Paused immediately
+      │                    (P5 LLM synthesis + P6a ReAct loop)
       ▼
 [Planning/Risk]─────────→ UpgradePlan
       │                    (Risk model — P3)
@@ -137,8 +142,11 @@ Human Approval ◄───────── REQUIRED for PROD
 ## Key Safety Properties
 
 - Production deployment always requires human approval (hard constraint, not soft recommendation)
-- `GateResult.UNKNOWN` is never treated as `PASS` — missing evidence blocks promotion
+- `GateResult.UNKNOWN` is never treated as `PASS` — missing health evidence blocks promotion
+- `RiskLevel.UNKNOWN` signals incomplete research — orchestrator transitions to `Paused` before any gate is evaluated
 - LLM output never directly determines gate results — Python decides
+- ReAct tool calls are scope-validated: component and chart version must match the active upgrade request
+- All tool inputs are validated against strict Pydantic models (`extra="forbid"`)
 - Agents cannot execute arbitrary shell commands or access Kubernetes secrets
 - All reasoning steps are recorded in a JSONL audit log
 
