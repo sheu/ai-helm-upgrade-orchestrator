@@ -1,0 +1,23 @@
+scenario_id: SCN-002
+name: Breaking Helm value key renamed
+description: "Major upgrade from kafka-connect 0.18.2 to 0.19.0 (CP 7.8 to CP 8.0.2). Breaking config key rename detected."
+request:
+  component: kafka-connect
+  target_chart_version: "0.19.0"
+  target_app_version: "8.0.2"
+  departments: [payments]
+  regions: [eu-west-1]
+  starting_environment: INT
+  requested_by: platform-engineer
+expected_outcome:
+  risk_level: high
+  static_validation: pass_with_warnings
+  breaking_change_detected: true
+  recommendation: review_required
+  human_approval_required: true
+monitoring_snapshot:
+  pod_ready_percent: 100
+  restart_count: 1
+  error_rate_change_pct: 0.8
+  latency_change_pct: 1.5
+  memory_change_pct: 5.2

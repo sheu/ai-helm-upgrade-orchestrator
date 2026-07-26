@@ -1,0 +1,17 @@
+department,region,environment,cluster_name,kubernetes_version,component,chart_version,app_version,values_path,criticality,argocd_application
+payments,eu-west-1,INT,payments-euw1-int,1.31,kafka-connect,0.18.2,7.8.1,environments/department-a/eu-west-1/int/connect.yaml,high,payments-int-connect
+payments,eu-west-1,PROD,payments-euw1-prod,1.31,kafka-connect,0.18.2,7.8.1,environments/department-a/eu-west-1/prod/connect.yaml,critical,payments-prod-connect
+payments,af-south-1,INT,payments-afs-int,1.30,kafka-connect,0.17.5,7.7.3,environments/department-a/af-south-1/int/connect.yaml,high,payments-afs-int-connect
+payments,af-south-1,PROD,payments-afs-prod,1.30,kafka-connect,0.17.5,7.7.3,environments/department-a/af-south-1/prod/connect.yaml,critical,payments-afs-prod-connect
+vehicle-services,eu-west-1,INT,vehicles-euw1-int,1.31,kafka-connect,0.18.2,7.8.1,environments/department-b/eu-west-1/int/connect.yaml,medium,vehicles-int-connect
+vehicle-services,eu-west-1,PROD,vehicles-euw1-prod,1.31,kafka-connect,0.18.2,7.8.1,environments/department-b/eu-west-1/prod/connect.yaml,high,vehicles-prod-connect
+vehicle-services,af-south-1,INT,vehicles-afs-int,1.26,kafka-connect,0.16.1,7.6.0,environments/department-b/af-south-1/int/connect.yaml,medium,vehicles-afs-int-connect
+vehicle-services,af-south-1,PROD,vehicles-afs-prod,1.26,kafka-connect,0.16.1,7.6.0,environments/department-b/af-south-1/prod/connect.yaml,high,vehicles-afs-prod-connect
+payments,eu-west-1,INT,payments-euw1-int,1.31,prometheus,25.1.0,2.51.2,environments/department-a/eu-west-1/int/prometheus.yaml,medium,payments-int-prometheus
+payments,eu-west-1,PROD,payments-euw1-prod,1.31,prometheus,25.1.0,2.51.2,environments/department-a/eu-west-1/prod/prometheus.yaml,high,payments-prod-prometheus
+vehicle-services,eu-west-1,INT,vehicles-euw1-int,1.31,prometheus,25.0.0,2.50.1,environments/department-b/eu-west-1/int/prometheus.yaml,medium,vehicles-int-prometheus
+vehicle-services,eu-west-1,PROD,vehicles-euw1-prod,1.31,prometheus,25.0.0,2.50.1,environments/department-b/eu-west-1/prod/prometheus.yaml,high,vehicles-prod-prometheus
+payments,eu-west-1,INT,payments-euw1-int,1.31,grafana,8.0.0,11.0.0,environments/department-a/eu-west-1/int/grafana.yaml,low,payments-int-grafana
+payments,eu-west-1,PROD,payments-euw1-prod,1.31,grafana,7.3.12,10.4.2,environments/department-a/eu-west-1/prod/grafana.yaml,medium,payments-prod-grafana
+vehicle-services,eu-west-1,INT,vehicles-euw1-int,1.31,loki,6.5.0,3.1.0,environments/department-b/eu-west-1/int/loki.yaml,low,vehicles-int-loki
+vehicle-services,eu-west-1,PROD,vehicles-euw1-prod,1.31,loki,6.4.1,3.0.0,environments/department-b/eu-west-1/prod/loki.yaml,medium,vehicles-prod-loki

@@ -1,0 +1,26 @@
+# Kafka Connect values — payments / eu-west-1 / PROD
+component: kafka-connect
+chart:
+  repository: internal-platform
+  name: kafka-connect
+  version: 0.18.2
+image:
+  repository: confluentinc/cp-kafka-connect
+  tag: 7.8.1
+  pullPolicy: IfNotPresent
+replicaCount: 3
+kafka:
+  connect:
+    config.storage.replication.factor: "3"
+    offset.storage.replication.factor: "3"
+    status.storage.replication.factor: "3"
+    group.id: payments-euw1-prod-connect
+bootstrapServers: "kafka-broker-prod.eu-west-1.internal:9092"
+schemaRegistryUrl: "http://schema-registry-prod.eu-west-1.internal:8081"
+resources:
+  requests:
+    cpu: "1000m"
+    memory: "2Gi"
+  limits:
+    cpu: "4000m"
+    memory: "8Gi"

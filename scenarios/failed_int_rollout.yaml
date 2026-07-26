@@ -1,0 +1,24 @@
+scenario_id: SCN-004
+name: Failed INT deployment
+description: "Upgrade triggers high pod restart count and elevated error rate, failing INT health gate. Rollback recommended."
+request:
+  component: kafka-connect
+  target_chart_version: "0.19.0"
+  target_app_version: "8.0.2"
+  departments: [payments]
+  regions: [eu-west-1]
+  starting_environment: INT
+  requested_by: platform-engineer
+expected_outcome:
+  risk_level: high
+  static_validation: pass_with_warnings
+  int_health: fail
+  recommendation: rollback
+  prod_blocked: true
+monitoring_snapshot:
+  pod_ready_percent: 50
+  restart_count: 8
+  error_rate_change_pct: 28.5
+  latency_change_pct: 45.2
+  memory_change_pct: 12.1
+  connector_status: FAILED

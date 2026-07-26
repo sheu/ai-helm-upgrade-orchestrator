@@ -1,0 +1,30 @@
+# Quality Gates Configuration
+global:
+  require_helm_lint: true
+  require_template_success: true
+  require_human_prod_approval: true
+  maximum_risk_for_automatic_int: 59
+
+health:
+  minimum_ready_replicas_percent: 100
+  maximum_new_restart_count: 2
+  maximum_error_rate_increase_percent: 5.0
+  maximum_latency_increase_percent: 10.0
+  maximum_memory_increase_percent: 20.0
+  soak_period_minutes: 30
+
+kafka_connect:
+  require_rest_api: true
+  maximum_failed_connectors: 0
+  maximum_failed_tasks: 0
+  require_consumer_group_stable: true
+
+argocd:
+  required_sync_status: Synced
+  required_health_status: Healthy
+  sync_timeout_minutes: 10
+
+validation:
+  # UNKNOWN is not PASS — missing evidence blocks promotion
+  unknown_blocks_promotion: true
+  require_rollback_plan: true

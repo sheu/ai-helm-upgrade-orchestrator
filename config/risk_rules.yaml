@@ -1,0 +1,37 @@
+# Risk Scoring Rules
+# Factors add to the score; mitigations subtract from it
+# Risk levels: 0-29=Low, 30-59=Medium, 60-79=High, 80-100=Critical
+
+positive_factors:
+  major_app_version_change:
+    weight: 25
+    description: "Major application version change (e.g., CP 7.x -> CP 8.x)"
+  breaking_helm_value_change:
+    weight: 20
+    description: "Known breaking change in Helm values configuration"
+  kubernetes_incompatibility:
+    weight: 25
+    description: "Target chart requires higher Kubernetes version than available"
+  stateful_or_critical_component:
+    weight: 10
+    description: "Component is stateful or business-critical"
+  no_prior_upgrade_history:
+    weight: 10
+    description: "No previous successful upgrade record for this component/version pair"
+  missing_monitoring_coverage:
+    weight: 20
+    description: "Required monitoring metrics unavailable or not configured"
+
+mitigations:
+  proven_rollback_procedure:
+    weight: -10
+    description: "Documented and tested rollback procedure exists"
+  successful_int_validation:
+    weight: -20
+    description: "INT deployment validated successfully"
+
+thresholds:
+  low: 29
+  medium: 59
+  high: 79
+  critical: 100

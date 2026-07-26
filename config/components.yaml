@@ -1,0 +1,61 @@
+# Platform Component Catalog
+components:
+  kafka-connect:
+    display_name: "Kafka Connect"
+    type: stateful
+    default_criticality: high
+    monitoring_required:
+      - error_rate
+      - connector_status
+      - consumer_group_lag
+    helm_repo: internal-platform
+    image_repo: confluentinc/cp-kafka-connect
+    dependencies:
+      - kafka-broker
+      - schema-registry
+
+  kafka-rest-proxy:
+    display_name: "Kafka REST Proxy"
+    type: stateless
+    default_criticality: medium
+    monitoring_required:
+      - error_rate
+      - request_latency
+    helm_repo: internal-platform
+    image_repo: confluentinc/cp-kafka-rest
+    dependencies:
+      - kafka-broker
+
+  prometheus:
+    display_name: "Prometheus"
+    type: stateful
+    default_criticality: medium
+    monitoring_required:
+      - scrape_success_rate
+      - storage_usage
+    helm_repo: prometheus-community
+    image_repo: prom/prometheus
+    dependencies: []
+
+  grafana:
+    display_name: "Grafana"
+    type: stateless
+    default_criticality: low
+    monitoring_required:
+      - panel_load_time
+    helm_repo: grafana
+    image_repo: grafana/grafana
+    dependencies:
+      - prometheus
+
+  loki:
+    display_name: "Loki"
+    type: stateful
+    default_criticality: low
+    monitoring_required:
+      - ingest_rate
+      - query_latency
+    helm_repo: grafana
+    image_repo: grafana/loki
+    dependencies:
+      - grafana

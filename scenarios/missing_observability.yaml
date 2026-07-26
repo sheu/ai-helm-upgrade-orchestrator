@@ -1,0 +1,18 @@
+scenario_id: SCN-005
+name: Missing observability evidence
+description: "Monitoring metrics unavailable after INT deployment. System produces UNKNOWN state — does not assume success."
+request:
+  component: prometheus
+  target_chart_version: "25.2.0"
+  target_app_version: "2.52.0"
+  departments: [vehicle-services]
+  regions: [eu-west-1]
+  starting_environment: INT
+  requested_by: platform-engineer
+expected_outcome:
+  risk_level: medium
+  static_validation: pass
+  int_health: unknown
+  recommendation: paused_human_investigation_required
+  prod_blocked: true
+monitoring_snapshot: null

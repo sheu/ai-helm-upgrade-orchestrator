@@ -1,0 +1,15 @@
+component,source_version,target_version,environment,department,region,duration_minutes,validation_result,pod_restart_count,error_rate_change_pct,cpu_change_pct,memory_change_pct,rollback_performed,final_outcome,incident_notes
+kafka-connect,0.16.1,0.17.5,INT,vehicle-services,eu-west-1,23,passed,0,-1.2,3.1,2.4,false,success,
+kafka-connect,0.16.1,0.17.5,PROD,vehicle-services,eu-west-1,31,passed,1,-0.8,2.9,3.1,false,success,
+kafka-connect,0.17.5,0.18.2,INT,payments,eu-west-1,19,passed,0,-2.1,1.8,1.2,false,success,
+kafka-connect,0.17.5,0.18.2,PROD,payments,eu-west-1,27,passed,0,-1.5,2.2,1.8,false,success,
+kafka-connect,0.15.0,0.16.1,INT,vehicle-services,af-south-1,45,failed,8,25.3,18.7,12.1,true,rollback,Breaking change in connector config key naming
+kafka-connect,0.18.0,0.18.2,INT,vehicle-services,af-south-1,15,passed,0,-0.5,0.8,0.3,false,success,Patch upgrade smooth
+prometheus,24.0.0,25.0.0,INT,vehicle-services,eu-west-1,18,passed,0,-3.1,1.2,4.5,false,success,
+prometheus,24.0.0,25.0.0,PROD,vehicle-services,eu-west-1,22,passed,0,-2.8,1.4,4.2,false,success,
+prometheus,25.0.0,25.1.0,INT,payments,eu-west-1,12,passed,0,-1.0,0.5,0.8,false,success,Patch upgrade
+grafana,7.3.10,7.3.12,INT,payments,eu-west-1,10,passed,0,-0.3,0.2,0.1,false,success,Minor patch
+grafana,7.3.12,8.0.0,INT,payments,eu-west-1,35,passed,2,0.5,4.2,6.8,false,success,Major version required config migration
+loki,6.3.0,6.4.1,INT,vehicle-services,eu-west-1,20,passed,0,-0.8,1.1,2.3,false,success,
+loki,6.4.1,6.5.0,INT,vehicle-services,eu-west-1,18,passed,0,-1.2,0.9,1.9,false,success,
+kafka-connect,0.17.5,0.18.2,INT,vehicle-services,af-south-1,22,passed,0,-1.8,2.0,1.5,false,success,

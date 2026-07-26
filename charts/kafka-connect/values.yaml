@@ -1,0 +1,43 @@
+replicaCount: 2
+image:
+  repository: confluentinc/cp-kafka-connect
+  tag: "8.0.2"
+  pullPolicy: IfNotPresent
+
+bootstrapServers: ""
+schemaRegistryUrl: ""
+
+kafka:
+  connect:
+    # Renamed from kafka.connect.config.storage.replication.factor in 0.19.0
+    config.storage.replication.factor: "3"
+    offset.storage.replication.factor: "3"
+    status.storage.replication.factor: "3"
+    group.id: "kafka-connect"
+
+# Minimum Kubernetes version: 1.27
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "2000m"
+    memory: "4Gi"
+
+service:
+  type: ClusterIP
+  port: 8083
+
+livenessProbe:
+  httpGet:
+    path: /connectors
+    port: 8083
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /connectors
+    port: 8083
+  initialDelaySeconds: 30
+  periodSeconds: 10

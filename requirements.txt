@@ -1,0 +1,41 @@
+# Requirements for AI-Assisted GitOps Orchestration
+# Generated from the project virtual environment
+# Install: pip install -r requirements.txt
+
+# Core data analysis (adapted from Project 2 — Statistical Data Analysis)
+numpy==2.5.1
+pandas==3.0.5
+matplotlib==3.11.1
+seaborn==0.13.2
+scipy==1.18.0
+
+# Data validation and structured models
+pydantic==2.13.4
+pydantic_core==2.46.4
+annotated-types==0.8.0
+typing_extensions==4.16.0
+typing-inspection==0.4.2
+
+# Configuration
+PyYAML==6.0.3
+python-dotenv==1.2.2
+
+# Generative AI / LLM (adapted from Project 5 — Generative AI)
+openai==2.48.0
+httpx==0.28.1
+anyio==4.14.2
+h11==0.16.0
+sniffio==1.3.1
+certifi==2026.7.22
+charset-normalizer==3.4.9
+idna==3.18
+tqdm==4.69.1
+
+# Jupyter notebook execution
+jupyter==1.1.1
+jupyterlab==4.6.2
+nbformat==5.10.4
+ipython==9.15.0
+ipykernel==7.3.0
+jupyter_client==8.9.1
+jupyter_core==5.9.1

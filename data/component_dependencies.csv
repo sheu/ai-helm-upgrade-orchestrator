@@ -1,0 +1,8 @@
+component,dependency,constraint,notes
+kafka-connect,kafka-broker,Compatible major version (e.g. CP 7.x requires Kafka 3.x),Confluent Platform versioning
+kafka-connect,schema-registry,Compatible CP version,Required for Avro/Protobuf serialization
+kafka-rest-proxy,kafka-broker,Compatible CP version,REST Proxy must match broker CP version
+grafana,prometheus,Compatible data-source API version,Grafana datasource plugin compatibility
+alertmanager,prometheus,Compatible alerting rule format,Must use same Prometheus version range
+loki,grafana,Compatible Loki datasource plugin version,Grafana-Loki plugin version must match
+argo-cd,kubernetes,Supported Kubernetes release (see Argo CD compatibility matrix),Argo CD 2.x supports K8s 1.26-1.31

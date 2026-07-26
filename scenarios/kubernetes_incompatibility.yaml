@@ -1,0 +1,19 @@
+scenario_id: SCN-003
+name: Kubernetes version incompatibility
+description: "Target chart 0.19.0 requires Kubernetes 1.27+, but vehicle-services/af-south-1 runs 1.26 in both INT and PROD."
+request:
+  component: kafka-connect
+  target_chart_version: "0.19.0"
+  target_app_version: "8.0.2"
+  departments: [vehicle-services]
+  regions: [af-south-1]
+  starting_environment: INT
+  requested_by: platform-engineer
+expected_outcome:
+  risk_level: critical
+  static_validation: fail
+  k8s_incompatibility_detected: true
+  blocked: true
+  recommendation: blocked_k8s_upgrade_required
+  human_approval_required: false
+monitoring_snapshot: null

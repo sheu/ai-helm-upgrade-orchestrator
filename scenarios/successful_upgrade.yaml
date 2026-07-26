@@ -1,0 +1,23 @@
+scenario_id: SCN-001
+name: Successful patch upgrade
+description: "Patch upgrade from kafka-connect 0.18.2 to 0.18.3 (CP 7.8.1 to 7.8.2). No breaking changes."
+request:
+  component: kafka-connect
+  target_chart_version: "0.18.3"
+  target_app_version: "7.8.2"
+  departments: [payments]
+  regions: [eu-west-1]
+  starting_environment: INT
+  requested_by: platform-engineer
+expected_outcome:
+  risk_level: low
+  static_validation: pass
+  int_health: pass
+  recommendation: promote
+  human_approval_required: true
+monitoring_snapshot:
+  pod_ready_percent: 100
+  restart_count: 0
+  error_rate_change_pct: -1.1
+  latency_change_pct: 0.2
+  memory_change_pct: 0.5
