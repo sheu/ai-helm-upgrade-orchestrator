@@ -17,7 +17,7 @@ This project demonstrates an AI-assisted system that automates the analysis, ris
 | Project 2 — Statistical Data Analysis | Data & Statistics | Pandas EDA methods for inventory quality analysis |
 | Project 3 — Applied ML (LSTM) | Machine Learning | Feature-weight risk scoring framework |
 | Project 5 — Generative AI (VAE) | Generative AI | LLM synthesis of release notes into structured findings |
-| Project 6a — Agentic AI Capstone | Agentic AI | ReAct agent pattern for UpgradeResearchAgent |
+| Project 6a — Agentic AI Capstone | Agentic AI | Tool-registry discipline and audit-logging pattern for UpgradeResearchAgent |
 | Project 6b — Agentic AI Beaver Choice | Agentic AI | Multi-agent sequential orchestration pattern |
 
 ## Repository Structure
@@ -35,7 +35,7 @@ ai-helm-upgrade-orchestrator/
 │   ├── helm_tools.py     # Helm lint/template wrappers
 │   ├── monitoring.py     # Health gate evaluation
 │   ├── gitops.py         # GitOps change generation
-│   ├── agents.py         # ReAct agents (P5, P6a)
+│   ├── agents.py         # Research agent with LLM synthesis (P5, P6a)
 │   ├── orchestrator.py   # Multi-agent coordinator (P6b)
 │   └── reporting.py      # Audit logging
 ├── config/
@@ -110,25 +110,25 @@ jupyter nbconvert --to notebook --execute --inplace \
 Upgrade Request
       │
       ▼
-[Inventory Agent]──────→ InventoryReport
+[Inventory Analysis]───→ InventoryReport
       │                    (Pandas EDA — P2)
       ▼
-[Research Agent]───────→ ResearchReport
-      │                    (ReAct + LLM — P5, P6a)
+[Research Agent]────────→ ResearchReport
+      │                    (tool-constrained retrieval + LLM synthesis — P5, P6a)
       ▼
-[Planning/Risk Agent]──→ UpgradePlan
+[Planning/Risk]─────────→ UpgradePlan
       │                    (Risk model — P3)
       ▼
-[Validation Agent]─────→ ValidationResult
+[Validation]────────────→ ValidationResult
       │                    (helm lint/template)
       ▼
-[Health Evaluation]────→ HealthEvaluationResult
+[Health Evaluation]─────→ HealthEvaluationResult
       │                    (Quality gates)
       ▼
-[GitOps Generator]─────→ outputs/proposed_changes/
+[GitOps Generator]──────→ outputs/proposed_changes/
       │
       ▼
-Human Approval ◄──────── REQUIRED for PROD
+Human Approval ◄───────── REQUIRED for PROD
       │
       ▼
    PROD Rollout

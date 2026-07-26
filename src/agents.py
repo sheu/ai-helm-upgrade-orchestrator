@@ -54,10 +54,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from .knowledge import run_upgrade_research
+from .knowledge import (
+    get_compatibility_matrix,
+    search_release_notes,
+    search_runbooks,
+)
 from .models import (
     AuditEntry,
     FindingSeverity,
+    LLMSynthesis,
     ResearchFinding,
     ResearchReport,
 )
@@ -168,12 +173,17 @@ Rules:
             logger.warning(f"Audit log write failed: {e}")
 
     def _llm_call(self, findings_text: str, component: str,
-                  target_chart_version: str, target_app_version: str) -> Dict:
+                  target_chart_version: str, target_app_version: str) -> LLMSynthesis:
         """
-        Call the LLM with the pre-extracted findings and return a parsed dict
-        containing 'synthesis_note' and 'additional_risks'.
+        Call the LLM with the pre-extracted findings and return a validated
+        LLMSynthesis object.
 
-        Falls back to a deterministic mock when no client is available.
+        The response is parsed with LLMSynthesis.model_validate_json(), which
+        enforces: synthesis_note is a non-empty str; additional_risks is a
+        list[str]; no unexpected keys are accepted.
+
+        Falls back to a deterministic mock when no client is available or when
+        the LLM returns an invalid response.
 
         Integration — Project 5 (Generative AI): the LLM encodes the verbose
         findings list into a compact synthesis_note (analogous to the VAE
@@ -208,20 +218,18 @@ Rules:
             # Strip markdown code fences if present
             raw = re.sub(r"^```(?:json)?\s*", "", raw)
             raw = re.sub(r"\s*```$", "", raw)
-            parsed = json.loads(raw)
-            if "synthesis_note" not in parsed:
-                raise ValueError("Missing 'synthesis_note' key")
-            return parsed
+            # Validate with Pydantic — enforces types and rejects unexpected keys
+            return LLMSynthesis.model_validate_json(raw)
         except Exception as e:
             logger.warning(f"LLM synthesis failed ({e}); using mock response.")
             return self._mock_llm_response(findings_text, component,
                                            target_chart_version, target_app_version)
 
     def _mock_llm_response(self, findings_text: str, component: str,
-                           target_chart_version: str, target_app_version: str) -> Dict:
+                           target_chart_version: str, target_app_version: str) -> LLMSynthesis:
         """
         Deterministic synthesis when no LLM client is available.
-        Produces a meaningful note from the finding count and severity.
+        Returns a validated LLMSynthesis object (same type as the live path).
         """
         finding_lines = [l for l in findings_text.splitlines() if l.strip()]
         critical_count = sum(1 for l in finding_lines if "[CRITICAL]" in l or "[ERROR]" in l)
@@ -242,7 +250,7 @@ Rules:
                 f"No release-note findings found for {component} {target_chart_version}. "
                 f"Proceeding on historical data and risk scoring only."
             )
-        return {"synthesis_note": note, "additional_risks": []}
+        return LLMSynthesis(synthesis_note=note, additional_risks=[])
 
     def run(
         self,
@@ -255,31 +263,84 @@ Rules:
         """
         Execute the research workflow and return an enriched ResearchReport.
 
-        The returned report carries a synthesis_note (set by the LLM) and may
-        carry additional findings appended from the LLM's additional_risks list.
-        Both are visible in the notebook output and the audit log.
+        All retrieval calls go through self.registry.call(), which acts as an
+        approved-tool enforcement boundary — only registered tools may be
+        invoked. This prevents arbitrary function calls from entering the
+        research pipeline.
+
+        Workflow:
+          1. search_release_notes  — keyword-extract findings from release docs
+          2. search_runbooks       — extract runbook procedures as findings
+          3. get_compatibility_matrix — extract minimum Kubernetes version
+          4. LLM synthesis          — produce synthesis_note + additional_risks
+          5. model_copy             — write LLM output into the ResearchReport
         """
         self._log("research_started", None,
                   f"Starting research for {component} chart {target_chart_version}")
 
-        # Step 1+2 — Deterministic tool calls
-        report = run_upgrade_research(
+        # Step 1 — Release-notes retrieval (routed through registry)
+        note_findings = self.registry.call(
+            "search_release_notes",
+            component=component,
+            chart_version=target_chart_version,
+        )
+        self._log(
+            "release_notes_retrieved",
+            "search_release_notes",
+            f"Found {len(note_findings)} release-note finding(s)",
+            evidence=f"Component: {component}  chart: {target_chart_version}",
+        )
+
+        # Step 2 — Runbook retrieval (routed through registry)
+        runbook_findings = self.registry.call("search_runbooks", component=component)
+        self._log(
+            "runbooks_retrieved",
+            "search_runbooks",
+            f"Found {len(runbook_findings)} runbook finding(s)",
+        )
+
+        # Step 3 — Compatibility matrix (routed through registry)
+        min_k8s = self.registry.call(
+            "get_compatibility_matrix",
+            component=component,
+            chart_version=target_chart_version,
+        )
+        self._log(
+            "compatibility_checked",
+            "get_compatibility_matrix",
+            f"Minimum Kubernetes version: {min_k8s or 'not specified'}",
+        )
+
+        # Assemble the deterministic report from retrieved findings
+        all_findings = note_findings + runbook_findings
+        breaking = any(
+            f.severity in (FindingSeverity.CRITICAL, FindingSeverity.ERROR)
+            and f.requires_validation
+            for f in note_findings
+        )
+        deprecated_values = [
+            f.title for f in note_findings
+            if re.search(r"rename|deprecat", f.title, re.IGNORECASE)
+        ]
+        sources = []
+        if note_findings:
+            sources.append(f"release_notes/{component}-{target_chart_version}.md")
+        if runbook_findings:
+            sources.append(f"runbooks/{component}-upgrade.md")
+
+        report = ResearchReport(
             request_id=self.request_id,
             component=component,
             target_chart_version=target_chart_version,
             target_app_version=target_app_version,
-            release_notes_dir=release_notes_dir,
-            runbooks_dir=runbooks_dir,
+            findings=all_findings,
+            minimum_kubernetes_version=min_k8s,
+            breaking_changes_detected=breaking,
+            deprecated_values=deprecated_values,
+            sources_consulted=sources,
         )
 
-        self._log(
-            "release_notes_retrieved",
-            "search_release_notes",
-            f"Found {len(report.findings)} finding(s)",
-            evidence=f"Sources: {report.sources_consulted}",
-        )
-
-        # Step 3 — LLM synthesis: enriches the report before it is returned
+        # Step 4 — LLM synthesis: enriches the report before it is returned
         findings_text = "\n".join(
             f"[{f.severity.value}] {f.title}: {f.evidence_excerpt[:120]}"
             for f in report.findings
@@ -289,12 +350,9 @@ Rules:
             findings_text, component, target_chart_version, target_app_version
         )
 
-        synthesis_note = llm_result.get("synthesis_note", "")
-        additional_risks = llm_result.get("additional_risks", [])
-
-        # Apply LLM output to the report — this is what makes it meaningful
+        # Step 5 — Apply LLM output to the report
         report = report.model_copy(update={
-            "synthesis_note": synthesis_note,
+            "synthesis_note": llm_result.synthesis_note,
             "findings": report.findings + [
                 ResearchFinding(
                     title=f"LLM-identified risk: {risk}",
@@ -303,7 +361,7 @@ Rules:
                     evidence_excerpt=f"Identified by LLM synthesis of extracted findings: {risk}",
                     requires_validation=True,
                 )
-                for risk in additional_risks
+                for risk in llm_result.additional_risks
                 if risk.strip()
             ],
         })
@@ -311,8 +369,8 @@ Rules:
         self._log(
             "llm_synthesis_applied",
             None,
-            f"synthesis_note written to report; {len(additional_risks)} additional risk(s) appended",
-            evidence=synthesis_note[:200],
+            f"synthesis_note written to report; {len(llm_result.additional_risks)} additional risk(s) appended",
+            evidence=llm_result.synthesis_note[:200],
         )
 
         self._log("research_complete", None,
@@ -332,17 +390,38 @@ def build_research_agent(
     runbooks_dir: str | Path,
     llm_client=None,
 ) -> UpgradeResearchAgent:
-    """Construct and return a configured UpgradeResearchAgent."""
+    """
+    Construct and return a configured UpgradeResearchAgent.
+
+    The ToolRegistry acts as an enforcement boundary: only the three approved
+    retrieval functions may be invoked by the agent. Any call to an
+    unregistered tool raises KeyError before execution.
+    """
     registry = ToolRegistry()
 
-    # Register only approved tools — no general shell execution
     registry.register(Tool(
         name="search_release_notes",
         description="Search release notes for a component and chart version",
-        func=lambda component, version: run_upgrade_research(
-            request_id, component, version, version, release_notes_dir, runbooks_dir
+        func=lambda component, chart_version: search_release_notes(
+            release_notes_dir, component, chart_version
         ),
-        input_schema={"component": "str", "version": "str"},
+        input_schema={"component": "str", "chart_version": "str"},
+    ))
+
+    registry.register(Tool(
+        name="search_runbooks",
+        description="Search upgrade runbooks for a component",
+        func=lambda component: search_runbooks(runbooks_dir, component),
+        input_schema={"component": "str"},
+    ))
+
+    registry.register(Tool(
+        name="get_compatibility_matrix",
+        description="Extract minimum Kubernetes version from release notes",
+        func=lambda component, chart_version: get_compatibility_matrix(
+            release_notes_dir, component, chart_version
+        ),
+        input_schema={"component": "str", "chart_version": "str"},
     ))
 
     return UpgradeResearchAgent(

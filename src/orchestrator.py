@@ -47,14 +47,16 @@ logger = logging.getLogger(__name__)
 
 class UpgradeCoordinator:
     """
-    Orchestrates the full upgrade workflow across four specialized agents:
-    1. Inventory Agent    — cluster discovery and version analysis
-    2. Research Agent     — release note and runbook research
-    3. Planning/Risk Agent — risk scoring and upgrade plan construction
-    4. Validation Agent   — Helm lint, template, and value checking
+    Orchestrates the full upgrade workflow across one LLM-assisted research
+    agent and three deterministic analytical/validation components:
+
+    1. Inventory analysis  — cluster discovery and version EDA (deterministic)
+    2. Research Agent      — release note and runbook research with LLM synthesis
+    3. Planning/Risk       — risk scoring and upgrade plan construction (deterministic)
+    4. Validation          — Helm lint, template, and value checking (deterministic)
 
     The coordinator enforces the state machine and quality gates.
-    Agents communicate through structured Pydantic models, not raw text.
+    Components communicate through structured Pydantic models, not raw text.
 
     Design reference: agentic-ai-beaver-choice-project sequential agent pattern.
     """
@@ -211,8 +213,17 @@ class UpgradeCoordinator:
         # ── Risk gate for automatic INT ───────────────────────────────────────
         max_auto_risk = gates_config["global"]["maximum_risk_for_automatic_int"]
         if plan.risk_score > max_auto_risk:
-            print(f"\n  ⚠ Risk score {plan.risk_score} exceeds automatic INT threshold "
-                  f"({max_auto_risk}). Proceeding with mandatory human review flag.")
+            self._transition(
+                UpgradeState.AWAITING_APPROVAL,
+                f"Risk score {plan.risk_score} exceeds automatic INT threshold ({max_auto_risk}) — human approval required"
+            )
+            return self._build_report(
+                request, inventory_report, plan, [], [], [],
+                f"AWAITING_APPROVAL: Risk score {plan.risk_score}/100 exceeds the automatic INT "
+                f"threshold of {max_auto_risk}. Human approval is required before INT deployment "
+                f"may proceed. Risk level: {plan.risk_level.value.upper()}.",
+                UpgradeState.AWAITING_APPROVAL, plan.risk_level, requires_human=True
+            )
 
         # ── Phase 4: Validation ───────────────────────────────────────────────
         print("\n[Phase 4] Validation Agent — helm lint, template, and value checks...")

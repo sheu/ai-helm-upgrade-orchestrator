@@ -6,14 +6,14 @@ models. This ensures that probabilistic LLM outputs are always validated
 against deterministic schemas before they influence workflow state.
 
 Integration note: The structured-output discipline here draws on the Pydantic
-validation patterns used in the agentic-ai-capstone ReAct agent.
+validation patterns used in the agentic-ai-capstone research agent.
 """
 from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ── Enumerations ─────────────────────────────────────────────────────────────
@@ -224,6 +224,21 @@ class ProposedChange(BaseModel):
     diff_content: str
     rollback_version: str
     pr_description: str
+
+
+# ── LLM output validation ─────────────────────────────────────────────────────
+
+class LLMSynthesis(BaseModel):
+    """
+    Strict schema for the JSON object the LLM must return.
+    model_validate_json() is used instead of json.loads() so that every field
+    is type-checked: synthesis_note must be a str, additional_risks must be a
+    list of str, and no unexpected keys are silently accepted.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    synthesis_note: str
+    additional_risks: List[str] = Field(default_factory=list)
 
 
 # ── Audit ─────────────────────────────────────────────────────────────────────
